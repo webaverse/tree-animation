@@ -34,11 +34,23 @@ export default () => {
         });
         tree.scene.traverse(o => { 
           if (o.isMesh) {
-            console.log(o);
+            //console.log(o);
             o.castShadow = true;
             o.receiveShadow = true;
             treeTexture = o.material.map;
             treeMesh = o;
+            console.log(o.geometry.attributes.color)
+            o.geometry.setAttribute(
+                'vertexColor',
+                new THREE.BufferAttribute(new Uint16Array(o.geometry.attributes.color.array.length), 4)
+            );
+            const vertexColorAttribute = o.geometry.getAttribute('vertexColor');
+            for(let i = 0; i < o.geometry.attributes.color.array.length; i++){
+                o.geometry.attributes.vertexColor.array[i] = o.geometry.attributes.color.array[i];
+            }
+            vertexColorAttribute.needsUpdate = true;
+            o.geometry.attributes.vertexColor.normalized = true;
+            console.log( o.geometry.attributes.vertexColor)
             treeMesh.frustumCulled = false;
             treeMesh.material= new THREE.ShaderMaterial({
                 uniforms: {
@@ -63,7 +75,9 @@ export default () => {
                     ${THREE.ShaderChunk.common}
                     ${THREE.ShaderChunk.logdepthbuf_pars_vertex}
                 
-                
+                    attribute vec4 color;
+                    attribute vec4 vertexColor;
+
                     uniform float uTime;
                     uniform sampler2D noiseTexture;
                     uniform float uWindRotation;
@@ -72,6 +86,7 @@ export default () => {
 
                     varying vec2 vUv;
                     varying vec3 vPos;
+                    varying vec4 vColor;
 
                     vec4 quat_from_axis_angle(vec3 axis, float angle) { 
                         vec4 qr;
@@ -106,6 +121,7 @@ export default () => {
                     }
 
                     void main() {
+                        vColor = vertexColor;
                         vUv = uv;
                         vPos = position;
 
@@ -132,12 +148,20 @@ export default () => {
                         ) * 1.;
 
                         
-                        vec3 windOffset = vec3(windOffsetX, windOffsetY, windOffsetZ);
-                        vec4 q2 = quat_from_axis_angle(vec3(0., 1., 0.), uWindRotation);
-                        windOffset = rotate_vertex_position(windOffset / 3. * uWindZoneForce , q2);
-                        if(vUv.x > 0.4 && vUv.y < 0.25){
-                            pos += windOffset * 0.12 * uWindZoneForce;
+                        
+                        
+                        
+                        if(vertexColor.r >= 0.5){
+                            vec3 windOffset = vec3(windOffsetX, windOffsetY, windOffsetZ);
+                            vec4 q2 = quat_from_axis_angle(vec3(0., 1., 0.), uWindRotation);
+                            windOffset = rotate_vertex_position(windOffset / 3. * uWindZoneForce , q2);
+                            pos += windOffset * 0.12 * uWindZoneForce * ((vertexColor.r + vertexColor.g) / 2.);
                         }
+                        else{
+                            vec3 windOffset = vec3(0., windOffsetY, 0.);
+                            pos += windOffset * 0.12 * uWindZoneForce * ((vertexColor.r + vertexColor.g) / 2.);
+                        }   
+                        
                         vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
                         gl_Position = projectionMatrix * mvPosition;
                         ${THREE.ShaderChunk.logdepthbuf_vertex}
@@ -148,6 +172,7 @@ export default () => {
                     uniform float uTime;
                     varying vec2 vUv;
                     varying vec3 vPos;
+                    varying vec4 vColor;
                     uniform sampler2D treeTexture;
                     uniform sampler2D noiseTexture;
                     
