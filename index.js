@@ -144,20 +144,11 @@ export default () => {
                             )
                         ) * 1.;
 
+                        vec3 windOffset = vec3(windOffsetX, windOffsetY, windOffsetZ);
+                        vec4 q2 = quat_from_axis_angle(vec3(0., 1., 0.), uWindRotation);
+                        windOffset = rotate_vertex_position(windOffset / 3. * uWindZoneForce , q2);
+                        pos += windOffset * 0.12 * uWindZoneForce * ((vertexColor.r + vertexColor.g));
                         
-                        
-                        
-                        
-                        if(vertexColor.r >= 0.5){
-                            vec3 windOffset = vec3(windOffsetX, windOffsetY, windOffsetZ);
-                            vec4 q2 = quat_from_axis_angle(vec3(0., 1., 0.), uWindRotation);
-                            windOffset = rotate_vertex_position(windOffset / 3. * uWindZoneForce , q2);
-                            pos += windOffset * 0.12 * uWindZoneForce * ((vertexColor.r + vertexColor.g) / 2.);
-                        }
-                        else{
-                            vec3 windOffset = vec3(0., windOffsetY, 0.);
-                            pos += windOffset * 0.12 * uWindZoneForce * ((vertexColor.r + vertexColor.g) / 2.);
-                        }   
                         
                         vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
                         gl_Position = projectionMatrix * mvPosition;
