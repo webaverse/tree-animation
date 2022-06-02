@@ -39,7 +39,6 @@ export default () => {
             o.receiveShadow = true;
             treeTexture = o.material.map;
             treeMesh = o;
-            console.log(o.geometry.attributes.color)
             o.geometry.setAttribute(
                 'vertexColor',
                 new THREE.BufferAttribute(new Uint16Array(o.geometry.attributes.color.array.length), 4)
