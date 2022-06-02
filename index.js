@@ -34,7 +34,7 @@ export default () => {
         });
         tree.scene.traverse(o => { 
           if (o.isMesh) {
-            console.log(o);
+            //console.log(o);
             o.castShadow = true;
             o.receiveShadow = true;
             treeTexture = o.material.map;
