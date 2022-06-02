@@ -34,7 +34,7 @@ export default () => {
         });
         tree.scene.traverse(o => { 
           if (o.isMesh) {
-            //console.log(o);
+            console.log(o);
             o.castShadow = true;
             o.receiveShadow = true;
             treeTexture = o.material.map;
@@ -127,27 +127,27 @@ export default () => {
                         
                         float windOffsetX = snoise(
                             vec2(
-                                25. * vUv.x + uTime * 0.06 * pos.y * 0.07 * uWindZoneFreq * 1.5,
-                                25. * vUv.y + uTime * 0.1 * 10. * pos.y * 0.07 * uWindZoneFreq * 1.5
+                                25. * vUv.x + uTime * 0.06 * pos.y * 0.07 * uWindZoneFreq * 1.7,
+                                25. * vUv.y + uTime * 0.1 * 10. * pos.y * 0.07 * uWindZoneFreq * 1.7
                             )
                         ) * 1.;
                         float windOffsetY = snoise(
                             vec2(
-                                25. * vUv.x + uTime * 0.06 * pos.y * 0.07 * uWindZoneFreq * 1.5,
-                                25. * vUv.y + uTime * 0.1 * 10. * pos.y * 0.07 * uWindZoneFreq * 1.5
+                                25. * vUv.x + uTime * 0.06 * pos.y * 0.07 * uWindZoneFreq * 1.7,
+                                25. * vUv.y + uTime * 0.1 * 10. * pos.y * 0.07 * uWindZoneFreq * 1.7
                             )
                         ) * 1.;
                         float windOffsetZ = snoise(
                             vec2(
-                                25. * vUv.x + uTime * 0.06 * pos.y * 0.07 * uWindZoneFreq * 1.5,
-                                25. * vUv.y + uTime * 0.1 * 10. * pos.y * 0.07 * uWindZoneFreq * 1.5
+                                25. * vUv.x + uTime * 0.06 * pos.y * 0.07 * uWindZoneFreq * 1.7,
+                                25. * vUv.y + uTime * 0.1 * 10. * pos.y * 0.07 * uWindZoneFreq * 1.7
                             )
                         ) * 1.;
 
                         vec3 windOffset = vec3(windOffsetX, windOffsetY, windOffsetZ);
                         vec4 q2 = quat_from_axis_angle(vec3(0., 1., 0.), uWindRotation);
                         windOffset = rotate_vertex_position(windOffset / 3. * uWindZoneForce , q2);
-                        pos += windOffset * 0.12 * uWindZoneForce * ((vertexColor.r + vertexColor.g));
+                        pos += windOffset * 0.12 * uWindZoneForce * ((vertexColor.r + vertexColor.g) / 2.);
                         
                         
                         vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
