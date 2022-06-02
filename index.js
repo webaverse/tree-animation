@@ -50,7 +50,6 @@ export default () => {
             }
             vertexColorAttribute.needsUpdate = true;
             o.geometry.attributes.vertexColor.normalized = true;
-            console.log( o.geometry.attributes.vertexColor)
             treeMesh.frustumCulled = false;
             treeMesh.material= new THREE.ShaderMaterial({
                 uniforms: {
@@ -75,7 +74,6 @@ export default () => {
                     ${THREE.ShaderChunk.common}
                     ${THREE.ShaderChunk.logdepthbuf_pars_vertex}
                 
-                    attribute vec4 color;
                     attribute vec4 vertexColor;
 
                     uniform float uTime;
