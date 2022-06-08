@@ -206,8 +206,8 @@ export default () => {
         
         app.add(tree.scene);
         let physicsId;
-        // physicsId = physics.addGeometry(tree.scene);
-        // physicsIds.push(physicsId)
+        physicsId = physics.addGeometry(tree.scene);
+        physicsIds.push(physicsId)
         app.updateMatrixWorld();
 
         
