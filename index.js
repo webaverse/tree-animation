@@ -8,17 +8,17 @@ const baseUrl = import.meta.url.replace(/(\/)[^\/\/]*$/, '$1');
 
 
 export default () => {  
-    const windZones = metaversefile.getWinds();
+    let windZones = [];
     let windZoneFreq = 0;
     let windZoneForce = 0;
 
-    for(const wind of windZones){
-    if(wind.windType === 'directional'){
-        windZoneFreq = wind.windFrequency <= 10 ? 1 + wind.windFrequency * 0.05 : 1.5;
-        windZoneForce =  wind.windForce <= 10 ? 1 + wind.windForce * 0.025 : 1.25;
-        break;
-    }
-    }
+    // for(const wind of windZones){
+    //     if(wind.windType === 'directional'){
+    //         windZoneFreq = wind.windFrequency <= 10 ? 1 + wind.windFrequency * 0.05 : 1.5;
+    //         windZoneForce =  wind.windForce <= 10 ? 1 + wind.windForce * 0.025 : 1.25;
+    //         break;
+    //     }
+    // }
 
     const app = useApp();
     let treeMesh = null;
@@ -143,12 +143,22 @@ export default () => {
                                 25. * vUv.y + uTime * 0.1 * 10. * pos.y * 0.07 * uWindZoneFreq * 1.5
                             )
                         ) * 1.;
+                        float branchOffsetXYZ = snoise(
+                            vec2(
+                                uTime * 0.06 * uWindZoneFreq * 0.5,
+                                uTime * 0.1 * 10. * uWindZoneFreq * 0.5
+                            )
+                        ) * 1.;
 
                         vec3 windOffset = vec3(windOffsetX, windOffsetY, windOffsetZ);
                         vec4 q2 = quat_from_axis_angle(vec3(0., 1., 0.), uWindRotation);
                         windOffset = rotate_vertex_position(windOffset / 3. * uWindZoneForce , q2);
                         pos += windOffset * 0.15 * uWindZoneForce * ((vertexColor.r + vertexColor.g) / 2.);
                         
+                        vec3 branchOffset = vec3(branchOffsetXYZ, 0, 0);
+                        vec4 q3 = quat_from_axis_angle(vec3(0., 1., 0.), uWindRotation);
+                        branchOffset = rotate_vertex_position(branchOffset / 3. * uWindZoneForce , q3);
+                        pos += branchOffset * 0.1 * uWindZoneForce * vertexColor.b;
                         
                         vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
                         gl_Position = projectionMatrix * mvPosition;
@@ -177,7 +187,7 @@ export default () => {
                         //     gl_FragColor = vec4(vUv, 0., 1.0);
                         // else
                         //     gl_FragColor = vec4(vUv, 0., 0.3);
-                        gl_FragColor = tree;
+                        gl_FragColor = vColor;
                         gl_FragColor.a = 1.0;
                     ${THREE.ShaderChunk.logdepthbuf_fragment}
                     }
@@ -196,15 +206,26 @@ export default () => {
         
         app.add(tree.scene);
         let physicsId;
-        physicsId = physics.addGeometry(tree.scene);
-        physicsIds.push(physicsId)
+        // physicsId = physics.addGeometry(tree.scene);
+        // physicsIds.push(physicsId)
         app.updateMatrixWorld();
 
         
 
     })();
-    
+    let lastLength = 0;
     useFrame(({timestamp}) => {
+        windZones = metaversefile.getWinds();
+        if(lastLength !== windZones.length){
+            for(const wind of windZones){
+                if(wind.windType === 'directional'){
+                    windZoneFreq = wind.windFrequency <= 10 ? 1 + wind.windFrequency * 0.05 : 1.5;
+                    windZoneForce =  wind.windForce <= 10 ? 1 + wind.windForce * 0.025 : 1.25;
+                    break;
+                }
+            }
+            lastLength = windZones.length;
+        }
         if(treeMesh){
             treeMesh.material.uniforms.uTime.value = timestamp /1000;
             treeMesh.material.uniforms.uWindRotation.value = ((timestamp /5000) % 1) * Math.PI * 2;
