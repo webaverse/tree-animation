@@ -8,32 +8,26 @@ const baseUrl = import.meta.url.replace(/(\/)[^\/\/]*$/, '$1');
 
 
 export default () => {  
-    const windZones = metaversefile.getWinds();
+    let windZones = [];
     let windZoneFreq = 0;
     let windZoneForce = 0;
-
-    for(const wind of windZones){
-    if(wind.windType === 'directional'){
-        windZoneFreq = wind.windFrequency <= 10 ? 1 + wind.windFrequency * 0.05 : 1.5;
-        windZoneForce =  wind.windForce <= 10 ? 1 + wind.windForce * 0.025 : 1.25;
-        break;
-    }
-    }
+    let windZoneNoiseScale = 0;
 
     const app = useApp();
     let treeMesh = null;
     const physics = usePhysics();
     const physicsIds = [];
     let treeTexture = null;
+
     (async () => {
-        const u = `${baseUrl}/Tree.glb`;
+        const u = `${baseUrl}/Webaverse_TreeForrest_Tree1_vine_leaf.glb`;
         const tree = await new Promise((accept, reject) => {
             const {gltfLoader} = useLoaders();
             gltfLoader.load(u, accept, function onprogress() {}, reject);
             
         });
         tree.scene.traverse(o => { 
-          if (o.isMesh) {
+          if (o.isMesh && treeMesh === null) {
             //console.log(o);
             o.castShadow = true;
             o.receiveShadow = true;
@@ -67,6 +61,12 @@ export default () => {
                     uWindZoneForce: {
                         value: windZoneForce,
                     },
+                    uWindZoneNoiseScale: {
+                        value: windZoneNoiseScale,
+                    },
+                    treePosition: {
+                        value: new THREE.Vector3(),
+                    },
                 },
                 vertexShader: `\
                     
@@ -80,6 +80,8 @@ export default () => {
                     uniform float uWindRotation;
                     uniform float uWindZoneFreq;
                     uniform float uWindZoneForce;
+                    uniform float uWindZoneNoiseScale;
+                    uniform vec3 treePosition;
 
                     varying vec2 vUv;
                     varying vec3 vPos;
@@ -124,30 +126,56 @@ export default () => {
 
                         vec3 pos = position;
                         
-                        
+                        float windFreq = uWindZoneFreq > 2. ? 2. : uWindZoneFreq;
+                        float windForce = uWindZoneForce > 1.4 ? 1.4 : uWindZoneForce;
+
                         float windOffsetX = snoise(
                             vec2(
-                                25. * vUv.x + uTime * 0.06 * pos.y * 0.07 * uWindZoneFreq * 1.5,
-                                25. * vUv.y + uTime * 0.1 * 10. * pos.y * 0.07 * uWindZoneFreq * 1.5
+                                25. * uWindZoneNoiseScale * vUv.x * (1. + vertexColor.g) + uTime * 0.06 * windFreq * 0.5,
+                                25. * uWindZoneNoiseScale * vUv.y * (1. + vertexColor.g) + uTime * windFreq * 0.5
                             )
                         ) * 1.;
                         float windOffsetY = snoise(
                             vec2(
-                                25. * vUv.x + uTime * 0.06 * pos.y * 0.07 * uWindZoneFreq * 1.5,
-                                25. * vUv.y + uTime * 0.1 * 10. * pos.y * 0.07 * uWindZoneFreq * 1.5
+                                25. * uWindZoneNoiseScale * vUv.x * (1. + vertexColor.g) + uTime * 0.06 * windFreq * 0.5,
+                                25. * uWindZoneNoiseScale * vUv.y * (1. + vertexColor.g) + uTime * windFreq * 0.5
                             )
                         ) * 1.;
                         float windOffsetZ = snoise(
                             vec2(
-                                25. * vUv.x + uTime * 0.06 * pos.y * 0.07 * uWindZoneFreq * 1.5,
-                                25. * vUv.y + uTime * 0.1 * 10. * pos.y * 0.07 * uWindZoneFreq * 1.5
+                                25. * uWindZoneNoiseScale * vUv.x * (1. + vertexColor.g) + uTime * 0.06 * windFreq * 0.5,
+                                25. * uWindZoneNoiseScale * vUv.y * (1. + vertexColor.g) + uTime * windFreq * 0.5
                             )
                         ) * 1.;
 
+                        // red color define the foliage, the outer vertices of the leaf should have more red value.
+                        // make sure only foliage have red value.
                         vec3 windOffset = vec3(windOffsetX, windOffsetY, windOffsetZ);
+                        pos += windOffset * (vertexColor.r * (1. + vertexColor.g)) * 0.05 * windForce * 0.8;
+
+                        // green value is the offset to desynchronize the rotation of the tree,
+                        // we should assign different branches and corresponding foliage chunks with unique green values
+                        // and make sure to paint connected pieces with the same color to avoid breaks in the mesh
+                        float offsetIntensity = 1000.;
+                        float noiseScale = 50. * uWindZoneNoiseScale;
+                        float bendNoise = snoise(
+                            vec2(
+                                treePosition.x * noiseScale + uTime * 0.06 * windFreq * 0.3,
+                                treePosition.z * noiseScale + uTime * windFreq * 0.3
+                            )
+                        ) * 1.;
+
+                        vec3 bendOffset = vec3((0.1 + vertexColor.g) * offsetIntensity * bendNoise, 0, 0);
                         vec4 q2 = quat_from_axis_angle(vec3(0., 1., 0.), uWindRotation);
-                        windOffset = rotate_vertex_position(windOffset / 3. * uWindZoneForce , q2);
-                        pos += windOffset * 0.15 * uWindZoneForce * ((vertexColor.r + vertexColor.g) / 2.);
+                        bendOffset = rotate_vertex_position(bendOffset / offsetIntensity, q2);
+
+                        // blue value define the bendable part
+                        // make sure to paint it with the same color horizontally to avoid breaks in the mesh
+                        // make sure to paint it with linear gradient vertically to make the rotation smoothly
+                        float bendable = vertexColor.b > 0. ? 1. : 0.;
+                        float isFoliage = vertexColor.r > 0. ? 1.2 : 0.4;
+                        
+                        pos += bendOffset * 0.07 * bendable * isFoliage * windForce;
                         
                         
                         vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
@@ -170,13 +198,9 @@ export default () => {
                             treeTexture,
                             vUv
                         );
-                        if(tree.a < 0.6){
+                        if(tree.a < 0.5){
                             discard;
                         }
-                        // if(vUv.x > 0.5 && vUv.y < 0.15)
-                        //     gl_FragColor = vec4(vUv, 0., 1.0);
-                        // else
-                        //     gl_FragColor = vec4(vUv, 0., 0.3);
                         gl_FragColor = tree;
                         gl_FragColor.a = 1.0;
                     ${THREE.ShaderChunk.logdepthbuf_fragment}
@@ -194,20 +218,36 @@ export default () => {
           }
         });
         
-        app.add(tree.scene);
+        app.add(treeMesh);
         let physicsId;
-        physicsId = physics.addGeometry(tree.scene);
+        physicsId = physics.addGeometry(treeMesh);
         physicsIds.push(physicsId)
         app.updateMatrixWorld();
 
         
 
     })();
-    
+    let lastLength = 0;
     useFrame(({timestamp}) => {
+        windZones = metaversefile.getWinds();
+        if(lastLength !== windZones.length){
+            for(const wind of windZones){
+                if(wind.windType === 'directional'){
+                    windZoneFreq = wind.windFrequency;
+                    windZoneForce =  wind.windForce;
+                    windZoneNoiseScale = wind.noiseScale;
+                    break;
+                }
+            }
+            lastLength = windZones.length;
+        }
         if(treeMesh){
             treeMesh.material.uniforms.uTime.value = timestamp /1000;
             treeMesh.material.uniforms.uWindRotation.value = ((timestamp /5000) % 1) * Math.PI * 2;
+            treeMesh.material.uniforms.uWindZoneFreq.value = windZoneFreq;
+            treeMesh.material.uniforms.uWindZoneForce.value = windZoneForce;
+            treeMesh.material.uniforms.uWindZoneNoiseScale.value = windZoneNoiseScale;
+            treeMesh.material.uniforms.treePosition.value.set(app.position.x, app.position.y, app.position.z);
         }
         app.updateMatrixWorld();
     
