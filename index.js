@@ -144,7 +144,7 @@ export default () => {
 
                         // green value is the offset to desynchronize the rotation of the tree,
                         // we should assign different branches and corresponding foliage chunks with unique green values
-                        // and make sure to paint connected pices with the same color to avoid breaks in the mesh
+                        // and make sure to paint connected pieces with the same color to avoid breaks in the mesh
                         float offsetIntensity = 100.;
                         float bendNoise = snoise(
                             vec2(
