@@ -11,6 +11,7 @@ export default () => {
     let windZones = [];
     let windZoneFreq = 0;
     let windZoneForce = 0;
+    let windZoneNoiseScale = 0;
 
     const app = useApp();
     let treeMesh = null;
@@ -60,6 +61,12 @@ export default () => {
                     uWindZoneForce: {
                         value: windZoneForce,
                     },
+                    uWindZoneNoiseScale: {
+                        value: windZoneNoiseScale,
+                    },
+                    treePosition: {
+                        value: new THREE.Vector3(),
+                    },
                 },
                 vertexShader: `\
                     
@@ -73,6 +80,8 @@ export default () => {
                     uniform float uWindRotation;
                     uniform float uWindZoneFreq;
                     uniform float uWindZoneForce;
+                    uniform float uWindZoneNoiseScale;
+                    uniform vec3 treePosition;
 
                     varying vec2 vUv;
                     varying vec3 vPos;
@@ -117,39 +126,42 @@ export default () => {
 
                         vec3 pos = position;
                         
-                        
+                        float windFreq = uWindZoneFreq > 2. ? 2. : uWindZoneFreq;
+                        float windForce = uWindZoneForce > 1.4 ? 1.4 : uWindZoneForce;
+
                         float windOffsetX = snoise(
                             vec2(
-                                25. * vUv.x + uTime * 0.06 * uWindZoneFreq * 1.,
-                                25. * vUv.y + uTime * uWindZoneFreq * 1.
+                                25. * uWindZoneNoiseScale * vUv.x * (1. + vertexColor.g) + uTime * 0.06 * windFreq * 0.8,
+                                25. * uWindZoneNoiseScale * vUv.y * (1. + vertexColor.g) + uTime * windFreq * 0.8
                             )
                         ) * 1.;
                         float windOffsetY = snoise(
                             vec2(
-                                25. * vUv.x + uTime * 0.06 * uWindZoneFreq * 1.,
-                                25. * vUv.y + uTime * uWindZoneFreq * 1.
+                                25. * uWindZoneNoiseScale * vUv.x * (1. + vertexColor.g) + uTime * 0.06 * windFreq * 0.8,
+                                25. * uWindZoneNoiseScale * vUv.y * (1. + vertexColor.g) + uTime * windFreq * 0.8
                             )
                         ) * 1.;
                         float windOffsetZ = snoise(
                             vec2(
-                                25. * vUv.x + uTime * 0.06 * uWindZoneFreq * 1.,
-                                25. * vUv.y + uTime * uWindZoneFreq * 1.
+                                25. * uWindZoneNoiseScale * vUv.x * (1. + vertexColor.g) + uTime * 0.06 * windFreq * 0.8,
+                                25. * uWindZoneNoiseScale * vUv.y * (1. + vertexColor.g) + uTime * windFreq * 0.8
                             )
                         ) * 1.;
 
                         // red color define the foliage, the outer vertices of the leaf should have more red value.
                         // make sure only foliage have red value.
                         vec3 windOffset = vec3(windOffsetX, windOffsetY, windOffsetZ);
-                        pos += windOffset * (vertexColor.r * vertexColor.g) * 0.05 * uWindZoneForce;
+                        pos += windOffset * (vertexColor.r * (1. + vertexColor.g)) * 0.05 * windForce * 0.8;
 
                         // green value is the offset to desynchronize the rotation of the tree,
                         // we should assign different branches and corresponding foliage chunks with unique green values
                         // and make sure to paint connected pieces with the same color to avoid breaks in the mesh
-                        float offsetIntensity = 100.;
+                        float offsetIntensity = 1000.;
+                        float noiseScale = 50. * uWindZoneNoiseScale;
                         float bendNoise = snoise(
                             vec2(
-                                uTime * 0.06 * 0.5,
-                                uTime * 0.5
+                                treePosition.x * noiseScale + uTime * 0.06 * windFreq * 0.3,
+                                treePosition.z * noiseScale + uTime * windFreq * 0.3
                             )
                         ) * 1.;
 
@@ -161,7 +173,9 @@ export default () => {
                         // make sure to paint it with the same color horizontally to avoid breaks in the mesh
                         // make sure to paint it with linear gradient vertically to make the rotation smoothly
                         float bendable = vertexColor.b > 0. ? 1. : 0.;
-                        pos += bendOffset * 0.07 * bendable;
+                        float isFoliage = vertexColor.r > 0. ? 1.2 : 0.4;
+                        
+                        pos += bendOffset * 0.07 * bendable * isFoliage * windForce;
                         
                         
                         vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
@@ -221,6 +235,7 @@ export default () => {
                 if(wind.windType === 'directional'){
                     windZoneFreq = wind.windFrequency;
                     windZoneForce =  wind.windForce;
+                    windZoneNoiseScale = wind.noiseScale;
                     break;
                 }
             }
@@ -231,6 +246,8 @@ export default () => {
             treeMesh.material.uniforms.uWindRotation.value = ((timestamp /5000) % 1) * Math.PI * 2;
             treeMesh.material.uniforms.uWindZoneFreq.value = windZoneFreq;
             treeMesh.material.uniforms.uWindZoneForce.value = windZoneForce;
+            treeMesh.material.uniforms.uWindZoneNoiseScale.value = windZoneNoiseScale;
+            treeMesh.material.uniforms.treePosition.value.set(app.position.x, app.position.y, app.position.z);
         }
         app.updateMatrixWorld();
     
