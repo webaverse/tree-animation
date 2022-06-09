@@ -28,7 +28,7 @@ export default () => {
         });
         tree.scene.traverse(o => { 
           if (o.isMesh && treeMesh === null) {
-            console.log(o);
+            //console.log(o);
             o.castShadow = true;
             o.receiveShadow = true;
             treeTexture = o.material.map;
@@ -219,9 +219,9 @@ export default () => {
         });
         
         app.add(treeMesh);
-        // let physicsId;
-        // physicsId = physics.addGeometry(tree.scene);
-        // physicsIds.push(physicsId)
+        let physicsId;
+        physicsId = physics.addGeometry(tree.scene);
+        physicsIds.push(physicsId)
         app.updateMatrixWorld();
 
         
