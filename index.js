@@ -131,20 +131,20 @@ export default () => {
 
                         float windOffsetX = snoise(
                             vec2(
-                                25. * uWindZoneNoiseScale * vUv.x * (1. + vertexColor.g) + uTime * 0.06 * windFreq * 0.8,
-                                25. * uWindZoneNoiseScale * vUv.y * (1. + vertexColor.g) + uTime * windFreq * 0.8
+                                25. * uWindZoneNoiseScale * vUv.x * (1. + vertexColor.g) + uTime * 0.06 * windFreq * 0.5,
+                                25. * uWindZoneNoiseScale * vUv.y * (1. + vertexColor.g) + uTime * windFreq * 0.5
                             )
                         ) * 1.;
                         float windOffsetY = snoise(
                             vec2(
-                                25. * uWindZoneNoiseScale * vUv.x * (1. + vertexColor.g) + uTime * 0.06 * windFreq * 0.8,
-                                25. * uWindZoneNoiseScale * vUv.y * (1. + vertexColor.g) + uTime * windFreq * 0.8
+                                25. * uWindZoneNoiseScale * vUv.x * (1. + vertexColor.g) + uTime * 0.06 * windFreq * 0.5,
+                                25. * uWindZoneNoiseScale * vUv.y * (1. + vertexColor.g) + uTime * windFreq * 0.5
                             )
                         ) * 1.;
                         float windOffsetZ = snoise(
                             vec2(
-                                25. * uWindZoneNoiseScale * vUv.x * (1. + vertexColor.g) + uTime * 0.06 * windFreq * 0.8,
-                                25. * uWindZoneNoiseScale * vUv.y * (1. + vertexColor.g) + uTime * windFreq * 0.8
+                                25. * uWindZoneNoiseScale * vUv.x * (1. + vertexColor.g) + uTime * 0.06 * windFreq * 0.5,
+                                25. * uWindZoneNoiseScale * vUv.y * (1. + vertexColor.g) + uTime * windFreq * 0.5
                             )
                         ) * 1.;
 
