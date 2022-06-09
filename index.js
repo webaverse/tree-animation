@@ -12,29 +12,22 @@ export default () => {
     let windZoneFreq = 0;
     let windZoneForce = 0;
 
-    // for(const wind of windZones){
-    //     if(wind.windType === 'directional'){
-    //         windZoneFreq = wind.windFrequency <= 10 ? 1 + wind.windFrequency * 0.05 : 1.5;
-    //         windZoneForce =  wind.windForce <= 10 ? 1 + wind.windForce * 0.025 : 1.25;
-    //         break;
-    //     }
-    // }
-
     const app = useApp();
     let treeMesh = null;
     const physics = usePhysics();
     const physicsIds = [];
     let treeTexture = null;
+
     (async () => {
-        const u = `${baseUrl}/Tree.glb`;
+        const u = `${baseUrl}/Webaverse_TreeForrest_Tree1_vine_leaf.glb`;
         const tree = await new Promise((accept, reject) => {
             const {gltfLoader} = useLoaders();
             gltfLoader.load(u, accept, function onprogress() {}, reject);
             
         });
         tree.scene.traverse(o => { 
-          if (o.isMesh) {
-            //console.log(o);
+          if (o.isMesh && treeMesh === null) {
+            console.log(o);
             o.castShadow = true;
             o.receiveShadow = true;
             treeTexture = o.material.map;
@@ -127,38 +120,49 @@ export default () => {
                         
                         float windOffsetX = snoise(
                             vec2(
-                                25. * vUv.x + uTime * 0.06 * pos.y * 0.07 * uWindZoneFreq * 1.5,
-                                25. * vUv.y + uTime * 0.1 * 10. * pos.y * 0.07 * uWindZoneFreq * 1.5
+                                25. * vUv.x + uTime * 0.06 * uWindZoneFreq * 1.,
+                                25. * vUv.y + uTime * uWindZoneFreq * 1.
                             )
                         ) * 1.;
                         float windOffsetY = snoise(
                             vec2(
-                                25. * vUv.x + uTime * 0.06 * pos.y * 0.07 * uWindZoneFreq * 1.5,
-                                25. * vUv.y + uTime * 0.1 * 10. * pos.y * 0.07 * uWindZoneFreq * 1.5
+                                25. * vUv.x + uTime * 0.06 * uWindZoneFreq * 1.,
+                                25. * vUv.y + uTime * uWindZoneFreq * 1.
                             )
                         ) * 1.;
                         float windOffsetZ = snoise(
                             vec2(
-                                25. * vUv.x + uTime * 0.06 * pos.y * 0.07 * uWindZoneFreq * 1.5,
-                                25. * vUv.y + uTime * 0.1 * 10. * pos.y * 0.07 * uWindZoneFreq * 1.5
-                            )
-                        ) * 1.;
-                        float branchOffsetXYZ = snoise(
-                            vec2(
-                                uTime * 0.06 * uWindZoneFreq * 0.5,
-                                uTime * 0.1 * 10. * uWindZoneFreq * 0.5
+                                25. * vUv.x + uTime * 0.06 * uWindZoneFreq * 1.,
+                                25. * vUv.y + uTime * uWindZoneFreq * 1.
                             )
                         ) * 1.;
 
+                        // red color define the foliage, the outer vertices of the leaf should have more red value.
+                        // make sure only foliage have red value.
                         vec3 windOffset = vec3(windOffsetX, windOffsetY, windOffsetZ);
+                        pos += windOffset * (vertexColor.r * vertexColor.g) * 0.05 * uWindZoneForce;
+
+                        // green value is the offset to desynchronize the rotation of the tree,
+                        // we should assign different branches and corresponding foliage chunks with unique green values
+                        // and make sure to paint connected pices with the same color to avoid breaks in the mesh
+                        float offsetIntensity = 100.;
+                        float bendNoise = snoise(
+                            vec2(
+                                uTime * 0.06 * 0.5,
+                                uTime * 0.5
+                            )
+                        ) * 1.;
+
+                        vec3 bendOffset = vec3((0.1 + vertexColor.g) * offsetIntensity * bendNoise, 0, 0);
                         vec4 q2 = quat_from_axis_angle(vec3(0., 1., 0.), uWindRotation);
-                        windOffset = rotate_vertex_position(windOffset / 3. * uWindZoneForce , q2);
-                        pos += windOffset * 0.15 * uWindZoneForce * ((vertexColor.r + vertexColor.g) / 2.);
+                        bendOffset = rotate_vertex_position(bendOffset / offsetIntensity, q2);
+
+                        // blue value define the bendable part
+                        // make sure to paint it with the same color horizontally to avoid breaks in the mesh
+                        // make sure to paint it with linear gradient vertically to make the rotation smoothly
+                        float bendable = vertexColor.b > 0. ? 1. : 0.;
+                        pos += bendOffset * 0.07 * bendable;
                         
-                        vec3 branchOffset = vec3(branchOffsetXYZ, 0, 0);
-                        vec4 q3 = quat_from_axis_angle(vec3(0., 1., 0.), uWindRotation);
-                        branchOffset = rotate_vertex_position(branchOffset / 3. * uWindZoneForce , q3);
-                        pos += branchOffset * 0.1 * uWindZoneForce * vertexColor.b;
                         
                         vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
                         gl_Position = projectionMatrix * mvPosition;
@@ -180,14 +184,10 @@ export default () => {
                             treeTexture,
                             vUv
                         );
-                        if(tree.a < 0.6){
+                        if(tree.a < 0.5){
                             discard;
                         }
-                        // if(vUv.x > 0.5 && vUv.y < 0.15)
-                        //     gl_FragColor = vec4(vUv, 0., 1.0);
-                        // else
-                        //     gl_FragColor = vec4(vUv, 0., 0.3);
-                        gl_FragColor = vColor;
+                        gl_FragColor = tree;
                         gl_FragColor.a = 1.0;
                     ${THREE.ShaderChunk.logdepthbuf_fragment}
                     }
@@ -204,10 +204,10 @@ export default () => {
           }
         });
         
-        app.add(tree.scene);
-        let physicsId;
-        physicsId = physics.addGeometry(tree.scene);
-        physicsIds.push(physicsId)
+        app.add(treeMesh);
+        // let physicsId;
+        // physicsId = physics.addGeometry(tree.scene);
+        // physicsIds.push(physicsId)
         app.updateMatrixWorld();
 
         
@@ -219,8 +219,8 @@ export default () => {
         if(lastLength !== windZones.length){
             for(const wind of windZones){
                 if(wind.windType === 'directional'){
-                    windZoneFreq = wind.windFrequency <= 10 ? 1 + wind.windFrequency * 0.05 : 1.5;
-                    windZoneForce =  wind.windForce <= 10 ? 1 + wind.windForce * 0.025 : 1.25;
+                    windZoneFreq = wind.windFrequency;
+                    windZoneForce =  wind.windForce;
                     break;
                 }
             }
@@ -229,6 +229,8 @@ export default () => {
         if(treeMesh){
             treeMesh.material.uniforms.uTime.value = timestamp /1000;
             treeMesh.material.uniforms.uWindRotation.value = ((timestamp /5000) % 1) * Math.PI * 2;
+            treeMesh.material.uniforms.uWindZoneFreq.value = windZoneFreq;
+            treeMesh.material.uniforms.uWindZoneForce.value = windZoneForce;
         }
         app.updateMatrixWorld();
     
